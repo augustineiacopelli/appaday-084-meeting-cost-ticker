@@ -1,0 +1,897 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Meeting Cost Ticker &middot; AppADay 084</title>
+<meta name="description" content="Watch the running dollar cost of a meeting tick up live. Estimate by average hourly rate, or enter each attendee's actual salary.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Roboto+Mono:wght@500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#0b0e14;
+    --bg-2:#0f141d;
+    --card:#141b27;
+    --card-2:#101722;
+    --line:#233145;
+    --line-soft:#1a2534;
+    --text:#e9eef6;
+    --muted:#8797ad;
+    --muted-2:#5f6f85;
+    --green:#37d9a3;
+    --green-dim:#1f7a5c;
+    --amber:#f6b445;
+    --red:#ff6f6f;
+    --shadow:0 18px 44px rgba(0,0,0,.45);
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    min-height:100dvh;
+    display:flex;
+    flex-direction:column;
+    background:
+      radial-gradient(1100px 620px at 50% -10%, rgba(55,217,163,.10), transparent 60%),
+      linear-gradient(180deg, var(--bg) 0%, var(--bg-2) 100%);
+    color:var(--text);
+    font-family:'Space Grotesk', system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+    -webkit-font-smoothing:antialiased;
+  }
+
+  header.bar{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap:12px;
+    padding:12px 16px;
+    border-bottom:1px solid var(--line-soft);
+    background:rgba(11,14,20,.72);
+    backdrop-filter:blur(8px);
+    position:sticky;
+    top:0;
+    z-index:5;
+  }
+  .brand{display:flex;align-items:center;gap:10px;font-weight:600;font-size:.95rem;letter-spacing:.2px;}
+  .brand .num{
+    font-family:'Roboto Mono', monospace;
+    font-weight:700;
+    font-size:.8rem;
+    color:var(--green);
+    background:rgba(55,217,163,.10);
+    border:1px solid rgba(55,217,163,.28);
+    padding:2px 8px;
+    border-radius:999px;
+  }
+  .brand .dot{color:var(--muted-2);}
+  .brand .name{color:var(--text);}
+  a.back{
+    color:var(--muted);
+    text-decoration:none;
+    font-size:.82rem;
+    font-weight:500;
+    border:1px solid var(--line);
+    padding:6px 12px;
+    border-radius:999px;
+    white-space:nowrap;
+    transition:color .18s ease, border-color .18s ease;
+  }
+  a.back:hover{color:var(--text);border-color:var(--green-dim);}
+
+  main{
+    flex:1;
+    width:100%;
+    max-width:600px;
+    margin:0 auto;
+    padding:24px 18px 40px;
+    display:flex;
+    flex-direction:column;
+    gap:18px;
+  }
+
+  .intro{text-align:center;margin:6px 0 2px;}
+  .intro h1{
+    margin:0 0 6px;
+    font-size:clamp(1.5rem,5.4vw,2rem);
+    font-weight:700;
+    letter-spacing:-.4px;
+  }
+  .intro p{margin:0;color:var(--muted);font-size:.95rem;line-height:1.5;}
+
+  .modes{
+    display:flex;
+    gap:4px;
+    background:var(--card-2);
+    border:1px solid var(--line-soft);
+    border-radius:12px;
+    padding:4px;
+  }
+  .mode-btn{
+    flex:1;
+    border:none;
+    background:transparent;
+    color:var(--muted);
+    font-family:inherit;
+    font-weight:600;
+    font-size:.9rem;
+    padding:10px 8px;
+    border-radius:9px;
+    cursor:pointer;
+    transition:background .18s ease, color .18s ease;
+  }
+  .mode-btn.active{background:var(--card);color:var(--text);box-shadow:0 1px 0 rgba(55,217,163,.25) inset, 0 0 0 1px var(--line);}
+  .mode-btn:disabled{cursor:not-allowed;opacity:.5;}
+
+  .setup{
+    display:grid;
+    grid-template-columns:1fr 1fr;
+    gap:12px;
+  }
+  .field{
+    background:var(--card);
+    border:1px solid var(--line-soft);
+    border-radius:14px;
+    padding:14px 14px 12px;
+    display:flex;
+    flex-direction:column;
+    gap:8px;
+  }
+  .field label{
+    font-size:.74rem;
+    text-transform:uppercase;
+    letter-spacing:.9px;
+    color:var(--muted);
+    font-weight:600;
+  }
+  .field .inwrap{display:flex;align-items:center;gap:8px;}
+  .field .prefix{color:var(--muted-2);font-family:'Roboto Mono',monospace;font-size:1.05rem;}
+  .field input{
+    width:100%;
+    background:transparent;
+    border:none;
+    outline:none;
+    color:var(--text);
+    font-family:'Roboto Mono', monospace;
+    font-weight:600;
+    font-size:1.35rem;
+    min-width:0;
+  }
+  .field input::-webkit-outer-spin-button,
+  .field input::-webkit-inner-spin-button{-webkit-appearance:none;margin:0;}
+  .field input[type=number]{-moz-appearance:textfield;}
+  .field:focus-within{border-color:var(--green-dim);box-shadow:0 0 0 3px rgba(55,217,163,.10);}
+  .field.locked{opacity:.55;}
+
+  .person-setup{display:flex;flex-direction:column;gap:10px;}
+  .person-rows{display:flex;flex-direction:column;gap:8px;}
+  .person-row{
+    display:grid;
+    grid-template-columns:1fr 1.15fr auto auto;
+    gap:8px;
+    align-items:center;
+    background:var(--card);
+    border:1px solid var(--line-soft);
+    border-radius:12px;
+    padding:8px;
+  }
+  .person-row input,
+  .person-row select{
+    background:var(--card-2);
+    border:1px solid var(--line-soft);
+    border-radius:9px;
+    color:var(--text);
+    font-family:inherit;
+    font-size:.92rem;
+    padding:9px 10px;
+    outline:none;
+    min-width:0;
+  }
+  .person-row .p-salary{font-family:'Roboto Mono',monospace;font-weight:600;}
+  .person-row .p-money{display:flex;align-items:center;gap:6px;background:var(--card-2);border:1px solid var(--line-soft);border-radius:9px;padding:0 10px;}
+  .person-row .p-money .prefix{color:var(--muted-2);font-family:'Roboto Mono',monospace;font-size:.95rem;}
+  .person-row .p-money input{border:none;background:transparent;padding:9px 0;}
+  .person-row select{cursor:pointer;-webkit-appearance:none;appearance:none;text-align:center;padding:9px 8px;}
+  .person-row input:focus,
+  .person-row select:focus,
+  .person-row .p-money:focus-within{border-color:var(--green-dim);}
+  .person-row .p-del{
+    border:none;
+    background:transparent;
+    color:var(--muted-2);
+    font-size:1.2rem;
+    line-height:1;
+    width:34px;height:34px;
+    border-radius:8px;
+    cursor:pointer;
+    transition:color .15s ease, background .15s ease;
+  }
+  .person-row .p-del:hover{color:var(--red);background:rgba(255,111,111,.10);}
+  .person-row.locked{opacity:.6;}
+  .add-person{
+    align-self:flex-start;
+    border:1px dashed var(--line);
+    background:transparent;
+    color:var(--muted);
+    font-family:inherit;
+    font-weight:600;
+    font-size:.9rem;
+    padding:10px 16px;
+    border-radius:10px;
+    cursor:pointer;
+    transition:color .18s ease, border-color .18s ease;
+  }
+  .add-person:hover{color:var(--text);border-color:var(--green-dim);}
+  .add-person:disabled{opacity:.5;cursor:not-allowed;}
+  .assume{margin:0;font-size:.76rem;color:var(--muted-2);line-height:1.4;}
+
+  .ticker{
+    position:relative;
+    background:
+      radial-gradient(520px 240px at 50% 0%, rgba(55,217,163,.12), transparent 70%),
+      linear-gradient(180deg, var(--card) 0%, var(--card-2) 100%);
+    border:1px solid var(--line);
+    border-radius:20px;
+    padding:26px 20px 24px;
+    text-align:center;
+    box-shadow:var(--shadow);
+    overflow:hidden;
+  }
+  .ticker::before{
+    content:"";
+    position:absolute;
+    inset:0;
+    border-radius:20px;
+    padding:1px;
+    background:linear-gradient(180deg, rgba(55,217,163,.30), transparent 55%);
+    -webkit-mask:linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+    -webkit-mask-composite:xor;
+    mask-composite:exclude;
+    pointer-events:none;
+    opacity:0;
+    transition:opacity .3s ease;
+  }
+  .ticker.live::before{opacity:1;}
+
+  .status{
+    display:inline-flex;
+    align-items:center;
+    gap:8px;
+    font-size:.72rem;
+    letter-spacing:1.4px;
+    text-transform:uppercase;
+    font-weight:600;
+    color:var(--muted);
+    margin-bottom:12px;
+  }
+  .pip{
+    width:9px;height:9px;border-radius:50%;
+    background:var(--muted-2);
+    box-shadow:0 0 0 0 rgba(55,217,163,0);
+  }
+  .ticker.live .pip{background:var(--green);animation:pulse 1.6s ease-out infinite;}
+  .ticker.live .status{color:var(--green);}
+  .ticker.paused .pip{background:var(--amber);}
+  .ticker.paused .status{color:var(--amber);}
+  @keyframes pulse{
+    0%{box-shadow:0 0 0 0 rgba(55,217,163,.55);}
+    70%{box-shadow:0 0 0 10px rgba(55,217,163,0);}
+    100%{box-shadow:0 0 0 0 rgba(55,217,163,0);}
+  }
+
+  .amount{
+    font-family:'Roboto Mono', monospace;
+    font-weight:700;
+    font-variant-numeric:tabular-nums;
+    font-size:clamp(2.6rem,13vw,4.6rem);
+    line-height:1;
+    letter-spacing:-1px;
+    color:var(--green);
+    text-shadow:0 0 26px rgba(55,217,163,.22);
+    word-break:break-all;
+  }
+  .elapsed{
+    margin-top:10px;
+    font-family:'Roboto Mono', monospace;
+    font-variant-numeric:tabular-nums;
+    font-size:1.05rem;
+    color:var(--muted);
+    letter-spacing:1px;
+  }
+  .compare{
+    margin-top:14px;
+    font-size:.9rem;
+    color:var(--muted);
+    min-height:1.25em;
+  }
+  .compare b{color:var(--text);font-weight:600;}
+
+  .stats{
+    display:grid;
+    grid-template-columns:repeat(3,1fr);
+    gap:10px;
+  }
+  .stat{
+    background:var(--card-2);
+    border:1px solid var(--line-soft);
+    border-radius:12px;
+    padding:12px 10px;
+    text-align:center;
+  }
+  .stat .k{
+    font-size:.66rem;
+    text-transform:uppercase;
+    letter-spacing:.8px;
+    color:var(--muted-2);
+    font-weight:600;
+    margin-bottom:6px;
+  }
+  .stat .v{
+    font-family:'Roboto Mono', monospace;
+    font-variant-numeric:tabular-nums;
+    font-weight:600;
+    font-size:1.02rem;
+    color:var(--text);
+  }
+
+  .controls{display:flex;gap:12px;}
+  button.ctl{
+    flex:1;
+    border:none;
+    border-radius:14px;
+    padding:15px 14px;
+    font-family:inherit;
+    font-weight:600;
+    font-size:1.02rem;
+    letter-spacing:.3px;
+    cursor:pointer;
+    transition:transform .06s ease, filter .18s ease, background .18s ease, opacity .18s ease;
+  }
+  button.ctl:active{transform:translateY(1px);}
+  button.primary{
+    background:linear-gradient(180deg, #40e6ae 0%, #2bbd8a 100%);
+    color:#06231a;
+    box-shadow:0 10px 24px rgba(43,189,138,.28);
+  }
+  button.primary.paused-style{
+    background:linear-gradient(180deg, #f7c05f 0%, #e59f2e 100%);
+    color:#2a1c04;
+    box-shadow:0 10px 24px rgba(229,159,46,.26);
+  }
+  button.primary:hover{filter:brightness(1.05);}
+  button.primary:disabled{
+    background:var(--line);
+    color:var(--muted-2);
+    box-shadow:none;
+    cursor:not-allowed;
+    filter:none;
+  }
+  button.ghost{
+    flex:0 0 auto;
+    min-width:120px;
+    background:transparent;
+    color:var(--muted);
+    border:1px solid var(--line);
+  }
+  button.ghost:hover{color:var(--text);border-color:var(--green-dim);}
+
+  .hint{
+    text-align:center;
+    font-size:.8rem;
+    color:var(--red);
+    min-height:1.1em;
+    margin-top:-4px;
+  }
+
+  footer.foot{
+    text-align:center;
+    padding:18px 16px 26px;
+    color:var(--muted-2);
+    font-size:.78rem;
+    line-height:1.5;
+  }
+  footer.foot a{color:var(--muted);text-decoration:none;}
+  footer.foot a:hover{color:var(--text);}
+
+  @media (max-width:420px){
+    .stat .v{font-size:.92rem;}
+    button.ghost{min-width:104px;}
+    .person-row{grid-template-columns:1fr 1fr auto auto;}
+  }
+  @media (prefers-reduced-motion:reduce){
+    .ticker.live .pip{animation:none;}
+    button.ctl:active{transform:none;}
+  }
+</style>
+</head>
+<body>
+  <header class="bar">
+    <div class="brand">
+      <span class="num">084</span>
+      <span class="dot">&middot;</span>
+      <span class="name">Meeting Cost Ticker</span>
+    </div>
+    <a class="back" href="https://augustineiacopelli.github.io/appaday/">AppADay</a>
+  </header>
+
+  <main>
+    <div class="intro">
+      <h1>What is this meeting costing?</h1>
+      <p>Estimate the burn with an average rate, or enter each attendee's actual salary. Then start the clock.</p>
+    </div>
+
+    <div class="modes" id="modes" role="tablist" aria-label="Cost input mode">
+      <button class="mode-btn active" data-mode="quick" id="modeQuick" type="button" role="tab" aria-selected="true">Average rate</button>
+      <button class="mode-btn" data-mode="person" id="modePerson" type="button" role="tab" aria-selected="false">By person</button>
+    </div>
+
+    <section class="setup" id="quickSetup" aria-label="Average rate inputs">
+      <div class="field" id="fieldPeople">
+        <label for="people">Attendees</label>
+        <div class="inwrap">
+          <input id="people" type="number" inputmode="numeric" min="1" step="1" value="6" aria-label="Number of attendees">
+        </div>
+      </div>
+      <div class="field" id="fieldRate">
+        <label for="rate">Avg hourly rate</label>
+        <div class="inwrap">
+          <span class="prefix">$</span>
+          <input id="rate" type="number" inputmode="decimal" min="0" step="1" value="55" aria-label="Average hourly rate in dollars">
+        </div>
+      </div>
+    </section>
+
+    <section class="person-setup" id="personSetup" hidden aria-label="Per-person salary inputs">
+      <div class="person-rows" id="personRows"></div>
+      <button class="add-person" id="addPerson" type="button">+ Add person</button>
+      <p class="assume">Enter each person's salary. Annual salaries are converted at 2,080 work hours per year; switch a row to /hr for hourly pay.</p>
+    </section>
+
+    <div class="hint" id="hint" role="status"></div>
+
+    <section class="ticker" id="tickerCard" aria-label="Running cost">
+      <div class="status" id="status"><span class="pip"></span><span id="statusText">Ready</span></div>
+      <div class="amount" id="amount">$0.00</div>
+      <div class="elapsed" id="elapsed">00:00:00</div>
+      <div class="compare" id="compare"></div>
+    </section>
+
+    <section class="stats" aria-label="Burn rate">
+      <div class="stat">
+        <div class="k">Per minute</div>
+        <div class="v" id="perMin">$0.00</div>
+      </div>
+      <div class="stat">
+        <div class="k">Per hour</div>
+        <div class="v" id="perHour">$0.00</div>
+      </div>
+      <div class="stat">
+        <div class="k">Head count</div>
+        <div class="v" id="headCount">0</div>
+      </div>
+    </section>
+
+    <section class="controls">
+      <button class="ctl primary" id="startBtn" type="button">Start</button>
+      <button class="ctl ghost" id="resetBtn" type="button">Reset</button>
+    </section>
+  </main>
+
+  <footer class="foot">
+    Cost is an estimate, prorated to the second, and stays on your device.<br>
+    Part of <a href="https://augustineiacopelli.github.io/appaday/">AppADay</a> &middot; one app, every day.
+  </footer>
+
+<script>
+(function(){
+  "use strict";
+
+  var STORE_KEY = "appaday084_meeting_cost";
+  var HOURS_PER_YEAR = 2080;
+  var MAX_PEOPLE = 40;
+
+  var modesEl   = document.getElementById("modes");
+  var modeQuick = document.getElementById("modeQuick");
+  var modePerson= document.getElementById("modePerson");
+  var quickWrap = document.getElementById("quickSetup");
+  var personWrap= document.getElementById("personSetup");
+  var personRows= document.getElementById("personRows");
+  var addPerson = document.getElementById("addPerson");
+
+  var peopleEl  = document.getElementById("people");
+  var rateEl    = document.getElementById("rate");
+  var fieldP    = document.getElementById("fieldPeople");
+  var fieldR    = document.getElementById("fieldRate");
+  var hintEl    = document.getElementById("hint");
+  var cardEl    = document.getElementById("tickerCard");
+  var statusTxt = document.getElementById("statusText");
+  var amountEl  = document.getElementById("amount");
+  var elapsedEl = document.getElementById("elapsed");
+  var compareEl = document.getElementById("compare");
+  var perMinEl  = document.getElementById("perMin");
+  var perHourEl = document.getElementById("perHour");
+  var headEl    = document.getElementById("headCount");
+  var startBtn  = document.getElementById("startBtn");
+  var resetBtn  = document.getElementById("resetBtn");
+
+  var mode = "quick";
+  var running = false;
+  var started = false;        // a session exists (running or paused)
+  var accumulatedMs = 0;      // completed run time before current segment
+  var segStart = 0;           // performance.now() at start of current running segment
+  var rafId = null;
+
+  var money = new Intl.NumberFormat("en-US", {
+    style: "currency", currency: "USD",
+    minimumFractionDigits: 2, maximumFractionDigits: 2
+  });
+
+  // Purchasing-power comparisons, cheapest to priciest.
+  var ITEMS = [
+    { price: 5,   one: "coffee",            many: "coffees" },
+    { price: 15,  one: "lunch",             many: "lunches" },
+    { price: 55,  one: "tank of gas",       many: "tanks of gas" },
+    { price: 90,  one: "nice dinner out",   many: "nice dinners out" },
+    { price: 150, one: "concert ticket",    many: "concert tickets" },
+    { price: 350, one: "plane ticket",      many: "plane tickets" },
+    { price: 900, one: "weekend getaway",   many: "weekend getaways" }
+  ];
+
+  function safeGet(){
+    try { return JSON.parse(localStorage.getItem(STORE_KEY) || "null"); }
+    catch (e) { return null; }
+  }
+  function safeSet(obj){
+    try { localStorage.setItem(STORE_KEY, JSON.stringify(obj)); }
+    catch (e) { /* storage unavailable; ignore */ }
+  }
+
+  // ---- Person rows -------------------------------------------------
+  function makePersonRow(data){
+    data = data || {};
+    var row = document.createElement("div");
+    row.className = "person-row";
+
+    var name = document.createElement("input");
+    name.type = "text";
+    name.className = "p-name";
+    name.placeholder = "Name (optional)";
+    name.setAttribute("aria-label", "Person name");
+    if (typeof data.name === "string") name.value = data.name;
+
+    var moneyWrap = document.createElement("div");
+    moneyWrap.className = "p-money";
+    var pre = document.createElement("span");
+    pre.className = "prefix";
+    pre.textContent = "$";
+    var salary = document.createElement("input");
+    salary.type = "number";
+    salary.className = "p-salary";
+    salary.min = "0";
+    salary.step = "1000";
+    salary.setAttribute("inputmode", "decimal");
+    salary.placeholder = "Salary";
+    salary.setAttribute("aria-label", "Salary amount");
+    if (typeof data.salary !== "undefined" && data.salary !== null) salary.value = data.salary;
+    moneyWrap.appendChild(pre);
+    moneyWrap.appendChild(salary);
+
+    var unit = document.createElement("select");
+    unit.className = "p-unit";
+    unit.setAttribute("aria-label", "Salary period");
+    var optYr = document.createElement("option");
+    optYr.value = "yr"; optYr.textContent = "/yr";
+    var optHr = document.createElement("option");
+    optHr.value = "hr"; optHr.textContent = "/hr";
+    unit.appendChild(optYr);
+    unit.appendChild(optHr);
+    unit.value = (data.unit === "hr") ? "hr" : "yr";
+
+    var del = document.createElement("button");
+    del.type = "button";
+    del.className = "p-del";
+    del.setAttribute("aria-label", "Remove person");
+    del.innerHTML = "&times;";
+
+    del.addEventListener("click", function(){
+      if (started) return;
+      personRows.removeChild(row);
+      if (personRows.children.length === 0) addPersonRow();
+      onSetupChange();
+    });
+    salary.addEventListener("input", onSetupChange);
+    unit.addEventListener("change", onSetupChange);
+    name.addEventListener("input", persist);
+
+    row.appendChild(name);
+    row.appendChild(moneyWrap);
+    row.appendChild(unit);
+    row.appendChild(del);
+    return row;
+  }
+
+  function addPersonRow(data){
+    if (personRows.children.length >= MAX_PEOPLE) return;
+    personRows.appendChild(makePersonRow(data));
+    reflectAddButton();
+  }
+
+  function reflectAddButton(){
+    addPerson.disabled = started || personRows.children.length >= MAX_PEOPLE;
+  }
+
+  function readPersons(){
+    var rows = personRows.querySelectorAll(".person-row");
+    var perHour = 0, count = 0;
+    for (var i = 0; i < rows.length; i++){
+      var salEl = rows[i].querySelector(".p-salary");
+      var unitEl = rows[i].querySelector(".p-unit");
+      var v = parseFloat(salEl.value);
+      if (isFinite(v) && v >= 0){
+        var hourly = (unitEl.value === "hr") ? v : (v / HOURS_PER_YEAR);
+        perHour += hourly;
+        count++;
+      }
+    }
+    return { perHour: perHour, people: count, valid: count >= 1 };
+  }
+
+  function collectPersons(){
+    var rows = personRows.querySelectorAll(".person-row");
+    var out = [];
+    for (var i = 0; i < rows.length; i++){
+      out.push({
+        name: rows[i].querySelector(".p-name").value,
+        salary: rows[i].querySelector(".p-salary").value,
+        unit: rows[i].querySelector(".p-unit").value
+      });
+    }
+    return out;
+  }
+
+  // ---- Model -------------------------------------------------------
+  function readQuick(){
+    var p = parseInt(peopleEl.value, 10);
+    var r = parseFloat(rateEl.value);
+    var pOk = isFinite(p) && p >= 1;
+    var rOk = isFinite(r) && r >= 0;
+    return { people: pOk ? p : NaN, rate: rOk ? r : NaN, valid: pOk && rOk, pOk: pOk, rOk: rOk };
+  }
+
+  function currentModel(){
+    if (mode === "person"){
+      var m = readPersons();
+      return {
+        valid: m.valid,
+        perHour: m.perHour,
+        cps: m.perHour / 3600,
+        people: m.people,
+        hint: m.valid ? "" : "Enter at least one salary."
+      };
+    }
+    var q = readQuick();
+    var perHour = q.valid ? (q.people * q.rate) : 0;
+    var hint = "";
+    if (!q.pOk) hint = "Enter at least 1 attendee.";
+    else if (!q.rOk) hint = "Enter a valid hourly rate.";
+    return {
+      valid: q.valid,
+      perHour: perHour,
+      cps: perHour / 3600,
+      people: q.valid ? q.people : 0,
+      hint: hint
+    };
+  }
+
+  function pad2(n){ return (n < 10 ? "0" : "") + n; }
+
+  function formatElapsed(ms){
+    var total = Math.floor(ms / 1000);
+    var h = Math.floor(total / 3600);
+    var m = Math.floor((total % 3600) / 60);
+    var s = total % 60;
+    return pad2(h) + ":" + pad2(m) + ":" + pad2(s);
+  }
+
+  function elapsedMs(){
+    return accumulatedMs + (running ? (performance.now() - segStart) : 0);
+  }
+
+  function comparisonText(cost){
+    if (cost < ITEMS[0].price) return "Still cheaper than a coffee.";
+    var chosen = ITEMS[0];
+    for (var i = 0; i < ITEMS.length; i++){
+      if (cost >= ITEMS[i].price) chosen = ITEMS[i];
+    }
+    var count = Math.floor(cost / chosen.price);
+    var label = count === 1 ? chosen.one : chosen.many;
+    return "That is about <b>" + count + "</b> " + label + ".";
+  }
+
+  function updateStats(model){
+    if (!model.valid){
+      perMinEl.textContent = "--";
+      perHourEl.textContent = "--";
+      headEl.textContent = model.people ? String(model.people) : "0";
+      return;
+    }
+    perHourEl.textContent = money.format(model.perHour);
+    perMinEl.textContent  = money.format(model.perHour / 60);
+    headEl.textContent    = String(model.people);
+  }
+
+  function render(){
+    var model = currentModel();
+    var ms = elapsedMs();
+    var cost = model.cps * (ms / 1000);
+
+    amountEl.textContent = money.format(cost);
+    elapsedEl.textContent = formatElapsed(ms);
+    compareEl.innerHTML = started ? comparisonText(cost) : "";
+    updateStats(model);
+  }
+
+  function frame(){
+    render();
+    if (running) rafId = requestAnimationFrame(frame);
+  }
+
+  function stopLoop(){
+    if (rafId !== null){ cancelAnimationFrame(rafId); rafId = null; }
+  }
+
+  // ---- Locking / status -------------------------------------------
+  function setSetupLocked(locked){
+    modeQuick.disabled = locked;
+    modePerson.disabled = locked;
+    peopleEl.disabled = locked;
+    rateEl.disabled = locked;
+    fieldP.classList.toggle("locked", locked);
+    fieldR.classList.toggle("locked", locked);
+    var rows = personRows.querySelectorAll(".person-row");
+    for (var i = 0; i < rows.length; i++){
+      rows[i].classList.toggle("locked", locked);
+      var inputs = rows[i].querySelectorAll("input, select, button");
+      for (var j = 0; j < inputs.length; j++) inputs[j].disabled = locked;
+    }
+    reflectAddButton();
+  }
+
+  function reflectStatus(){
+    cardEl.classList.toggle("live", running);
+    cardEl.classList.toggle("paused", started && !running);
+    if (running){
+      statusTxt.textContent = "Live";
+      startBtn.textContent = "Pause";
+      startBtn.classList.add("paused-style");
+    } else if (started){
+      statusTxt.textContent = "Paused";
+      startBtn.textContent = "Resume";
+      startBtn.classList.remove("paused-style");
+    } else {
+      statusTxt.textContent = "Ready";
+      startBtn.textContent = "Start";
+      startBtn.classList.remove("paused-style");
+    }
+  }
+
+  function validateForStart(){
+    if (started){ hintEl.textContent = ""; startBtn.disabled = false; return; }
+    var model = currentModel();
+    hintEl.textContent = model.valid ? "" : model.hint;
+    startBtn.disabled = !model.valid;
+  }
+
+  // ---- Controls ----------------------------------------------------
+  function start(){
+    var model = currentModel();
+    if (!model.valid){ validateForStart(); return; }
+    persist();
+    running = true;
+    started = true;
+    segStart = performance.now();
+    setSetupLocked(true);
+    reflectStatus();
+    stopLoop();
+    rafId = requestAnimationFrame(frame);
+  }
+
+  function pause(){
+    if (!running) return;
+    accumulatedMs += performance.now() - segStart;
+    running = false;
+    stopLoop();
+    reflectStatus();
+    render();
+  }
+
+  function toggleStart(){
+    if (running) pause();
+    else start();
+  }
+
+  function reset(){
+    running = false;
+    started = false;
+    accumulatedMs = 0;
+    segStart = 0;
+    stopLoop();
+    setSetupLocked(false);
+    reflectStatus();
+    validateForStart();
+    render();
+  }
+
+  // ---- Mode switching ---------------------------------------------
+  function setMode(next){
+    if (started || next === mode) return;
+    mode = next;
+    modeQuick.classList.toggle("active", mode === "quick");
+    modePerson.classList.toggle("active", mode === "person");
+    modeQuick.setAttribute("aria-selected", mode === "quick" ? "true" : "false");
+    modePerson.setAttribute("aria-selected", mode === "person" ? "true" : "false");
+    quickWrap.hidden = mode !== "quick";
+    personWrap.hidden = mode !== "person";
+    if (mode === "person" && personRows.children.length === 0){
+      addPersonRow(); addPersonRow();
+    }
+    onSetupChange();
+  }
+
+  function persist(){
+    safeSet({
+      mode: mode,
+      people: peopleEl.value,
+      rate: rateEl.value,
+      persons: collectPersons()
+    });
+  }
+
+  function onSetupChange(){
+    persist();
+    validateForStart();
+    if (!started) render();
+  }
+
+  // ---- Wiring ------------------------------------------------------
+  modeQuick.addEventListener("click", function(){ setMode("quick"); });
+  modePerson.addEventListener("click", function(){ setMode("person"); });
+  addPerson.addEventListener("click", function(){ if (!started){ addPersonRow(); onSetupChange(); } });
+  startBtn.addEventListener("click", toggleStart);
+  resetBtn.addEventListener("click", reset);
+  peopleEl.addEventListener("input", onSetupChange);
+  rateEl.addEventListener("input", onSetupChange);
+
+  document.addEventListener("keydown", function(ev){
+    var tag = document.activeElement ? document.activeElement.tagName : "";
+    var typing = tag === "INPUT" || tag === "SELECT" || tag === "TEXTAREA";
+    if (ev.code === "Space" && !typing){
+      ev.preventDefault();
+      if (!startBtn.disabled) toggleStart();
+    }
+  });
+
+  // ---- Restore -----------------------------------------------------
+  var saved = safeGet();
+  if (saved){
+    if (typeof saved.people === "string" || typeof saved.people === "number") peopleEl.value = saved.people;
+    if (typeof saved.rate === "string" || typeof saved.rate === "number") rateEl.value = saved.rate;
+    if (saved.persons && saved.persons.length){
+      for (var i = 0; i < saved.persons.length && i < MAX_PEOPLE; i++) addPersonRow(saved.persons[i]);
+    }
+    if (saved.mode === "person"){
+      mode = "quick"; // force a real transition through setMode
+      setMode("person");
+    }
+  }
+
+  // Initial paint
+  reflectAddButton();
+  validateForStart();
+  reflectStatus();
+  render();
+
+  window.addEventListener("load", function(){ render(); });
+})();
+</script>
+</body>
+</html>
